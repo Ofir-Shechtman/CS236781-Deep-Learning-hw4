@@ -120,9 +120,8 @@ class PolicyAgent(object):
         #  - Generate and return a new experience.
         # ====== YOUR CODE: ======
 
-        q_s = self.current_action_distribution()
-        _, action = torch.max(q_s, dim=0)  # Select action with highest value of q(s,a).
-        action = int(action.item())
+        probs = self.current_action_distribution()
+        action = torch.multinomial(probs, num_samples=1).item()
 
         # Perform the selected action on the environment to get a reward and a new observation.
         next_state, reward, is_done, _ = self.env.step(action)
@@ -211,9 +210,8 @@ class VanillaPolicyGradientLoss(nn.Module):
         # ====== YOUR CODE: ======
         log_proba = torch.log_softmax(action_scores, dim=1)
         selected_actions = log_proba.gather(dim=1, index=batch.actions.view(-1, 1)).view(-1)
-        print(selected_actions.shape, policy_weight.shape)
         loss = selected_actions * policy_weight
-        loss_p = - loss.mean()
+        loss_p = - torch.mean(loss)
         # ========================
         return loss_p
 
@@ -231,8 +229,8 @@ class BaselinePolicyGradientLoss(VanillaPolicyGradientLoss):
         #  Calculate the loss and baseline.
         #  Use the helper methods in this class as before.
         # ====== YOUR CODE: ======
-        loss_p, baseline = self._policy_weight(batch)
-        loss_p = self._policy_loss(batch, action_scores, loss_p - baseline)
+        weights, baseline = self._policy_weight(batch)
+        loss_p = self._policy_loss(batch, action_scores, weights - baseline)
         # ========================
         return loss_p, dict(loss_p=loss_p.item(), baseline=baseline.item())
 
@@ -241,10 +239,10 @@ class BaselinePolicyGradientLoss(VanillaPolicyGradientLoss):
         #  Calculate both the policy weight term and the baseline value for
         #  the PG loss with baseline.
         # ====== YOUR CODE: ======
-        policy_weight = batch.q_vals
-        baseline = torch.var(batch.q_vals)
+        weights = batch.q_vals
+        baseline = torch.mean(batch.q_vals)
         # ========================
-        return policy_weight, baseline
+        return weights, baseline
 
 
 class ActionEntropyLoss(nn.Module):
