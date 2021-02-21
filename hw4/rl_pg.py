@@ -28,15 +28,39 @@ class PolicyNet(nn.Module):
 
         # TODO: Implement a simple neural net to approximate the policy.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_features, 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+
+        # n_conv_features = self._calc_num_conv_features(in_features)
+        n_conv_features = in_features
+        self.fc = nn.Sequential(
+            nn.Linear(n_conv_features, 512, bias=True),
+            nn.ReLU(),
+            nn.Linear(512, out_actions, bias=True),
+            nn.Softmax(dim=0)
+        )
         # ========================
 
     def forward(self, x):
         # TODO: Implement a simple neural net to approximate the policy.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        features = x
+        features = features.view(x.shape, -1)
+        action_scores = self.fc(features)
         # ========================
         return action_scores
+
+    def _calc_num_conv_features(self, in_shape):
+        with torch.no_grad():
+            x = torch.zeros(1, in_shape)
+            out_shape = self.conv(x).shape
+        return int(np.prod(out_shape))
 
     @staticmethod
     def build_for_env(env: gym.Env, device="cpu", **kw):
@@ -49,7 +73,9 @@ class PolicyNet(nn.Module):
         """
         # TODO: Implement according to docstring.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        in_features = env.observation_space.shape[0]
+        out_actions = env.action_space.n
+        net = PolicyNet(in_features, out_actions, **kw)
         # ========================
         return net.to(device)
 
@@ -87,7 +113,8 @@ class PolicyAgent(object):
         #  Generate the distribution as described above.
         #  Notice that you should use p_net for *inference* only.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        with torch.no_grad():  # Do a forward pass through the q_net to get q(s,a) for all a.
+            actions_proba = self.p_net(self.curr_state.unsqueeze(0))[0]
         # ========================
 
         return actions_proba
@@ -109,8 +136,16 @@ class PolicyAgent(object):
         #  - Generate and return a new experience.
         # ====== YOUR CODE: ======
 
-        raise NotImplementedError()
+        q_s = self.current_action_distribution()
+        _, action = torch.max(q_s, dim=0)  # Select action with highest value of q(s,a).
+        action = int(action.item())
 
+        # Perform the selected action on the environment to get a reward and a new observation.
+        next_state, reward, is_done, _ = self.env.step(action)
+        next_state = torch.FloatTensor(next_state, device=self.device)
+        self.curr_episode_reward += reward
+        self.curr_state = next_state
+        experience = Experience(self.curr_state, action, reward, is_done)
         # ========================
         if is_done:
             self.reset()
@@ -136,7 +171,15 @@ class PolicyAgent(object):
             #  Create an agent and play the environment for one episode
             #  based on the policy encoded in p_net.
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            agent = PolicyAgent(env, p_net, device)
+
+            while True:
+                experience = agent.step()
+                reward = experience.reward
+                if experience.is_done:
+                    break
+            env = agent.env
+
             # ========================
         return env, n_steps, reward
 
@@ -158,7 +201,7 @@ class VanillaPolicyGradientLoss(nn.Module):
         #  Use the helper methods in this class to first calculate the weights
         #  and then the loss using the weights and action scores.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        loss_p = self._policy_loss(batch, action_scores, self._policy_weight(batch))
         # ========================
         return loss_p, dict(loss_p=loss_p.item())
 
@@ -167,7 +210,7 @@ class VanillaPolicyGradientLoss(nn.Module):
         #  Return the policy weight term for the causal vanilla PG loss.
         #  This is a tensor of shape (N,).
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        policy_weight = batch.q_vals
         # ========================
         return policy_weight
 
@@ -182,7 +225,9 @@ class VanillaPolicyGradientLoss(nn.Module):
         #   different episodes. So, here we'll simply average over the number
         #   of total experiences in our batch.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        log_proba = torch.log_softmax(action_scores, dim=1)
+        select_actions = log_proba.gather(dim=1, index=batch.actions.view(-1, 1)).view(-1)
+        loss_p = torch.mean(select_actions * policy_weight)
         # ========================
         return loss_p
 
