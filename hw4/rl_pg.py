@@ -264,7 +264,7 @@ class ActionEntropyLoss(nn.Module):
         max_entropy = None
         # TODO: Compute max_entropy.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        max_entropy = - np.log(1/n_actions).item()
         # ========================
         return max_entropy
 
@@ -290,7 +290,8 @@ class ActionEntropyLoss(nn.Module):
         #   - Use pytorch built-in softmax and log_softmax.
         #   - Calculate loss per experience and average over all of them.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        entropy = torch.sum(torch.softmax(action_scores, dim=1) * torch.log_softmax(action_scores, dim=1), dim=1)
+        loss_e = entropy.mean()/self.max_entropy
         # ========================
 
         loss_e *= self.beta
