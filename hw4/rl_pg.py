@@ -28,39 +28,21 @@ class PolicyNet(nn.Module):
 
         # TODO: Implement a simple neural net to approximate the policy.
         # ====== YOUR CODE: ======
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_features, 32, kernel_size=8, stride=4),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            nn.ReLU()
-        )
-
-        # n_conv_features = self._calc_num_conv_features(in_features)
-        n_conv_features = in_features
         self.fc = nn.Sequential(
-            nn.Linear(n_conv_features, 512, bias=True),
+            nn.Linear(in_features, 512, bias=True),
             nn.ReLU(),
             nn.Linear(512, out_actions, bias=True),
-            nn.Softmax(dim=0)
+            # nn.Softmax(dim=0)
         )
         # ========================
 
     def forward(self, x):
         # TODO: Implement a simple neural net to approximate the policy.
         # ====== YOUR CODE: ======
-        features = x
-        features = features.view(x.shape, -1)
+        features = x.view(x.shape, -1)
         action_scores = self.fc(features)
         # ========================
         return action_scores
-
-    def _calc_num_conv_features(self, in_shape):
-        with torch.no_grad():
-            x = torch.zeros(1, in_shape)
-            out_shape = self.conv(x).shape
-        return int(np.prod(out_shape))
 
     @staticmethod
     def build_for_env(env: gym.Env, device="cpu", **kw):
@@ -114,9 +96,11 @@ class PolicyAgent(object):
         #  Notice that you should use p_net for *inference* only.
         # ====== YOUR CODE: ======
         with torch.no_grad():  # Do a forward pass through the q_net to get q(s,a) for all a.
-            actions_proba = self.p_net(self.curr_state.unsqueeze(0))[0]
+            #print(self.curr_state.unsqueeze(0))
+            #print(self.p_net(self.curr_state.unsqueeze(0)))
+            actions = self.p_net(self.curr_state.unsqueeze(0)).view(-1)
+            actions_proba = torch.softmax(actions, dim=0)
         # ========================
-
         return actions_proba
 
     def step(self) -> Experience:
@@ -226,8 +210,10 @@ class VanillaPolicyGradientLoss(nn.Module):
         #   of total experiences in our batch.
         # ====== YOUR CODE: ======
         log_proba = torch.log_softmax(action_scores, dim=1)
-        select_actions = log_proba.gather(dim=1, index=batch.actions.view(-1, 1)).view(-1)
-        loss_p = torch.mean(select_actions * policy_weight)
+        selected_actions = log_proba.gather(dim=1, index=batch.actions.view(-1, 1)).view(-1)
+        print(selected_actions.shape, policy_weight.shape)
+        loss = selected_actions * policy_weight
+        loss_p = - loss.mean()
         # ========================
         return loss_p
 
@@ -245,7 +231,8 @@ class BaselinePolicyGradientLoss(VanillaPolicyGradientLoss):
         #  Calculate the loss and baseline.
         #  Use the helper methods in this class as before.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        loss_p, baseline = self._policy_weight(batch)
+        loss_p = self._policy_loss(batch, action_scores, loss_p - baseline)
         # ========================
         return loss_p, dict(loss_p=loss_p.item(), baseline=baseline.item())
 
@@ -254,7 +241,8 @@ class BaselinePolicyGradientLoss(VanillaPolicyGradientLoss):
         #  Calculate both the policy weight term and the baseline value for
         #  the PG loss with baseline.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        policy_weight = batch.q_vals
+        baseline = torch.var(batch.q_vals)
         # ========================
         return policy_weight, baseline
 
