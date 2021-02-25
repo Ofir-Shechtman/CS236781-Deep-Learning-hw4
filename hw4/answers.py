@@ -12,7 +12,9 @@ math (delimited with $$).
 
 def part1_pg_hyperparams():
     hp = dict(
-        batch_size=32, gamma=0.99, beta=0.5, learn_rate=1e-3, eps=1e-8, num_workers=0,
+        batch_size=4, gamma=0.99, beta=0.5, learn_rate=7e-4, eps=1e-08, num_workers=0, hidden_layers=[32, 128], bias=False
+        # batch_size=8, gamma=0.98, beta=0.5, learn_rate=0.0007, eps=1e-08, num_workers=0, hidden_layers=[128, 32]
+
     )
     # TODO: Tweak the hyperparameters if needed.
     #  You can also add new ones if you need them for your model's __init__.
@@ -21,13 +23,15 @@ def part1_pg_hyperparams():
 
 def part1_aac_hyperparams():
     hp = dict(
-        batch_size=32,
+        batch_size=4,
         gamma=0.99,
-        beta=1.0,
-        delta=1.0,
+        beta=10.0,
+        delta=0.1,
         learn_rate=1e-3,
         eps=1e-8,
-        num_workers=2,
+        num_workers=0,
+        hidden_layers=[32, 256],
+        bias=False
     )
     # TODO: Tweak the hyperparameters. You can also add new ones if you need
     #   them for your model implementation.
@@ -47,7 +51,6 @@ An equation: $e^{i\pi} -1 = 0$
 
 """
 
-
 part1_q2 = r"""
 **Your answer:**
 
@@ -60,7 +63,6 @@ a = 2
 An equation: $e^{i\pi} -1 = 0$
 
 """
-
 
 part1_q3 = r"""
 **Your answer:**

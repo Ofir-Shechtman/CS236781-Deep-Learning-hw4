@@ -28,12 +28,16 @@ class PolicyNet(nn.Module):
 
         # TODO: Implement a simple neural net to approximate the policy.
         # ====== YOUR CODE: ======
-        self.fc = nn.Sequential(
-            nn.Linear(in_features, 512, bias=True),
-            nn.ReLU(),
-            nn.Linear(512, out_actions, bias=True),
-            # nn.Softmax(dim=0)
-        )
+        hidden_layers = kw['hidden_layers']
+        bias = kw['bias']
+        layers = list()
+        layers.append(nn.Linear(in_features, hidden_layers[0], bias=bias))
+        layers.append(nn.ReLU())
+        for h1, h2 in zip(hidden_layers[:-1], hidden_layers[1:]):
+            layers.append(nn.Linear(h1, h2, bias=bias))
+            layers.append(nn.ReLU())
+        layers.append(nn.Linear(hidden_layers[-1], out_actions, bias=bias))
+        self.fc = nn.Sequential(*layers)
         # ========================
 
     def forward(self, x):
@@ -96,8 +100,6 @@ class PolicyAgent(object):
         #  Notice that you should use p_net for *inference* only.
         # ====== YOUR CODE: ======
         with torch.no_grad():  # Do a forward pass through the q_net to get q(s,a) for all a.
-            #print(self.curr_state.unsqueeze(0))
-            #print(self.p_net(self.curr_state.unsqueeze(0)))
             actions = self.p_net(self.curr_state.unsqueeze(0)).view(-1)
             actions_proba = torch.softmax(actions, dim=0)
         # ========================
@@ -125,7 +127,7 @@ class PolicyAgent(object):
 
         # Perform the selected action on the environment to get a reward and a new observation.
         next_state, reward, is_done, _ = self.env.step(action)
-        next_state = torch.FloatTensor(next_state, device=self.device)
+        next_state = torch.Tensor(next_state, device=self.device)
         self.curr_episode_reward += reward
         self.curr_state = next_state
         experience = Experience(self.curr_state, action, reward, is_done)
@@ -154,11 +156,12 @@ class PolicyAgent(object):
             #  Create an agent and play the environment for one episode
             #  based on the policy encoded in p_net.
             # ====== YOUR CODE: ======
-            agent = PolicyAgent(env, p_net, device)
+            agent = cls(env, p_net, device)
 
             while True:
                 experience = agent.step()
-                reward = experience.reward
+                n_steps += 1
+                reward += experience.reward
                 if experience.is_done:
                     break
             env = agent.env
@@ -438,7 +441,18 @@ class PolicyTrainer(object):
         #   - Backprop.
         #   - Update model parameters.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        self.optimizer.zero_grad()
+        action_batch = self.model(batch.states)
+        for loss_f in self.loss_functions:
+            loss, loss_dict = loss_f(batch, action_batch)
+            if total_loss is None:
+                total_loss = loss
+            else:
+                total_loss += loss
+            losses_dict.update(loss_dict)
+
+        total_loss.backward()
+        self.optimizer.step()
         # ========================
 
         return total_loss, losses_dict

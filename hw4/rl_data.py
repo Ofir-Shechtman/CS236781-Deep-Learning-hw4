@@ -96,13 +96,8 @@ class TrainBatch(object):
 
         states = [experience.state for episode in episodes for experience in episode.experiences]
         actions = [experience.action for episode in episodes for experience in episode.experiences]
-        q_vals_l = [episode.calc_qvals(gamma) for episode in episodes]
-        q_vals = [q_val for q_vals in q_vals_l for q_val in q_vals]
-        total_rewards = [experience.reward for episode in episodes for experience in episode.experiences]
-        # print(len(states), [len(i) for i in states])
-        # print(len(actions))
-        # print(len(q_vals))
-        # print(len(total_rewards))
+        q_vals = [i for episode in episodes for i in episode.calc_qvals(gamma)]
+        total_rewards = [episode.total_reward for episode in episodes]
 
         train_batch = TrainBatch(torch.stack(states),
                                  torch.LongTensor(actions),
@@ -173,6 +168,7 @@ class TrainBatchDataset(torch.utils.data.IterableDataset):
                 if experience.is_done:
                     break
             curr_batch.append(Episode(episode_reward, episode_experiences))
+            episode_reward = 0.0
             episode_experiences = []
             # ========================
             if len(curr_batch) == self.episode_batch_size:
