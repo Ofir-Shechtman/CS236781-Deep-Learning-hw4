@@ -29,7 +29,7 @@ class PolicyNet(nn.Module):
         # TODO: Implement a simple neural net to approximate the policy.
         # ====== YOUR CODE: ======
         hidden_layers = kw['hidden_layers']
-        bias = kw['bias']
+        bias = kw['n_bias']
         layers = list()
         layers.append(nn.Linear(in_features, hidden_layers[0], bias=bias))
         layers.append(nn.ReLU())
@@ -99,9 +99,8 @@ class PolicyAgent(object):
         #  Generate the distribution as described above.
         #  Notice that you should use p_net for *inference* only.
         # ====== YOUR CODE: ======
-        with torch.no_grad():  # Do a forward pass through the q_net to get q(s,a) for all a.
-            actions = self.p_net(self.curr_state.unsqueeze(0)).view(-1)
-            actions_proba = torch.softmax(actions, dim=0)
+        actions = self.p_net(self.curr_state.unsqueeze(0))
+        actions_proba = torch.softmax(actions, dim=1).view(-1)
         # ========================
         return actions_proba
 
@@ -121,16 +120,15 @@ class PolicyAgent(object):
         #  - Update agent state.
         #  - Generate and return a new experience.
         # ====== YOUR CODE: ======
-
         probs = self.current_action_distribution()
         action = torch.multinomial(probs, num_samples=1).item()
 
         # Perform the selected action on the environment to get a reward and a new observation.
         next_state, reward, is_done, _ = self.env.step(action)
-        next_state = torch.Tensor(next_state, device=self.device)
+        next_state = torch.FloatTensor(next_state, device=self.device)
         self.curr_episode_reward += reward
-        self.curr_state = next_state
         experience = Experience(self.curr_state, action, reward, is_done)
+        self.curr_state = next_state
         # ========================
         if is_done:
             self.reset()
@@ -157,7 +155,7 @@ class PolicyAgent(object):
             #  based on the policy encoded in p_net.
             # ====== YOUR CODE: ======
             agent = cls(env, p_net, device)
-
+            #with torch.no_grad():
             while True:
                 experience = agent.step()
                 n_steps += 1
@@ -187,7 +185,8 @@ class VanillaPolicyGradientLoss(nn.Module):
         #  Use the helper methods in this class to first calculate the weights
         #  and then the loss using the weights and action scores.
         # ====== YOUR CODE: ======
-        loss_p = self._policy_loss(batch, action_scores, self._policy_weight(batch))
+        policy_weight = self._policy_weight(batch)
+        loss_p = self._policy_loss(batch, action_scores, policy_weight)
         # ========================
         return loss_p, dict(loss_p=loss_p.item())
 
@@ -213,8 +212,8 @@ class VanillaPolicyGradientLoss(nn.Module):
         # ====== YOUR CODE: ======
         log_proba = torch.log_softmax(action_scores, dim=1)
         selected_actions = log_proba.gather(dim=1, index=batch.actions.view(-1, 1)).view(-1)
-        loss = selected_actions * policy_weight
-        loss_p = - torch.mean(loss)
+        loss = - selected_actions * policy_weight
+        loss_p = torch.mean(loss)
         # ========================
         return loss_p
 
@@ -441,8 +440,8 @@ class PolicyTrainer(object):
         #   - Backprop.
         #   - Update model parameters.
         # ====== YOUR CODE: ======
-        self.optimizer.zero_grad()
         action_batch = self.model(batch.states)
+        self.optimizer.zero_grad()
         for loss_f in self.loss_functions:
             loss, loss_dict = loss_f(batch, action_batch)
             if total_loss is None:
@@ -450,7 +449,9 @@ class PolicyTrainer(object):
             else:
                 total_loss += loss
             losses_dict.update(loss_dict)
-
+        total_loss *= len(batch)
+        from torchviz import make_dot
+        make_dot(total_loss).render("total_loss", format="png")
         total_loss.backward()
         self.optimizer.step()
         # ========================

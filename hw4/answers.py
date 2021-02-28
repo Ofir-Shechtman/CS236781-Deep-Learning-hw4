@@ -12,8 +12,8 @@ math (delimited with $$).
 
 def part1_pg_hyperparams():
     hp = dict(
-        batch_size=4, gamma=0.99, beta=0.5, learn_rate=7e-4, eps=1e-08, num_workers=0, hidden_layers=[32, 128], bias=False
-        # batch_size=8, gamma=0.98, beta=0.5, learn_rate=0.0007, eps=1e-08, num_workers=0, hidden_layers=[128, 32]
+        batch_size=1, gamma=0.99, beta=0.5, learn_rate=2e-2, eps=1e-08, num_workers=0, hidden_layers=[128], n_bias=False
+        # batch_size=4, gamma=0.99, beta=0.5, learn_rate=7e-4, eps=1e-08, num_workers=0, hidden_layers=[32, 128]
 
     )
     # TODO: Tweak the hyperparameters if needed.
@@ -23,15 +23,15 @@ def part1_pg_hyperparams():
 
 def part1_aac_hyperparams():
     hp = dict(
-        batch_size=4,
+        batch_size=1,
         gamma=0.99,
-        beta=10.0,
-        delta=0.1,
-        learn_rate=1e-3,
+        beta=0.0,
+        delta=1.0,
+        learn_rate=2e-2,
         eps=1e-8,
         num_workers=0,
-        hidden_layers=[32, 256],
-        bias=False
+        hidden_layers=[128],
+        n_bias=True
     )
     # TODO: Tweak the hyperparameters. You can also add new ones if you need
     #   them for your model implementation.
