@@ -21,10 +21,16 @@ class AACPolicyNet(nn.Module):
         # ====== YOUR CODE: ======
         hidden_layers = kw['hidden_layers']
         bias = kw['n_bias']
-        layers = list()
-        self.affine = nn.Linear(8, 128)
-        self.action_layer = nn.Linear(128, 4)
-        self.value_layer = nn.Linear(128, 1)
+        base_layers = list()
+
+        base_layers.append(nn.Linear(in_features, hidden_layers[0], bias=bias))
+        base_layers.append(nn.ReLU())
+        for h1, h2 in zip(hidden_layers[:-1], hidden_layers[1:]):
+            base_layers.append(nn.Linear(h1, h2, bias=bias))
+            base_layers.append(nn.ReLU())
+        self.base = nn.Sequential(*base_layers)
+        self.action_layer = nn.Linear(hidden_layers[-1], out_actions)
+        self.value_layer = nn.Linear(hidden_layers[-1], 1)
         # ========================
 
     def forward(self, x):
@@ -39,7 +45,7 @@ class AACPolicyNet(nn.Module):
         #  calculate both the action scores (policy) and the value of the
         #  given state.
         # ====== YOUR CODE: ======
-        state = F.relu(self.affine(x))
+        state = self.base(x)
         state_values = self.value_layer(state)
         action_scores = self.action_layer(state)
         # ========================
@@ -97,7 +103,7 @@ class AACPolicyGradientLoss(VanillaPolicyGradientLoss):
         loss_p = self._policy_loss(batch, action_scores, advantage)
         loss_v = self._value_loss(batch, state_values)
         # ========================
-
+        #print(loss_v.item(), (loss_p / (loss_v * self.delta)).item())
         loss_v *= self.delta
         loss_t = loss_p + loss_v
         return (
@@ -116,7 +122,7 @@ class AACPolicyGradientLoss(VanillaPolicyGradientLoss):
         #  loss into the state-value network.
         # ====== YOUR CODE: ======
         rewards = batch.q_vals
-        rewards = (rewards - rewards.mean()) / (rewards.std())
+        #rewards = (rewards - rewards.mean()) / (rewards.std())
         advantage = rewards - state_values.detach()
         # ========================
         return advantage
@@ -125,7 +131,7 @@ class AACPolicyGradientLoss(VanillaPolicyGradientLoss):
         # TODO: Calculate the state-value loss.
         # ====== YOUR CODE: ======
         rewards = batch.q_vals
-        rewards = (rewards - rewards.mean()) / (rewards.std())
+        #rewards = (rewards - rewards.mean()) / (rewards.std())
         loss_v = torch.nn.functional.mse_loss(state_values, rewards)
         # ========================
         return loss_v

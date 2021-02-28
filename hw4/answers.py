@@ -12,7 +12,7 @@ math (delimited with $$).
 
 def part1_pg_hyperparams():
     hp = dict(
-        batch_size=1, gamma=0.99, beta=0.5, learn_rate=2e-2, eps=1e-08, num_workers=0, hidden_layers=[128], n_bias=False
+        batch_size=32, gamma=0.99, beta=0.5, learn_rate=2e-2, eps=1e-08, num_workers=0, hidden_layers=[128], n_bias=True
         # batch_size=4, gamma=0.99, beta=0.5, learn_rate=7e-4, eps=1e-08, num_workers=0, hidden_layers=[32, 128]
 
     )
@@ -23,10 +23,10 @@ def part1_pg_hyperparams():
 
 def part1_aac_hyperparams():
     hp = dict(
-        batch_size=1,
+        batch_size=8,
         gamma=0.99,
-        beta=0.0,
-        delta=1.0,
+        beta=0.5,
+        delta=5e-5,
         learn_rate=2e-2,
         eps=1e-8,
         num_workers=0,

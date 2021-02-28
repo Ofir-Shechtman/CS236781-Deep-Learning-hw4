@@ -100,10 +100,9 @@ class TrainBatch(object):
         total_rewards = [episode.total_reward for episode in episodes]
 
         train_batch = TrainBatch(torch.stack(states).to(torch.float32),
-                                 torch.tensor(actions, requires_grad=False),
-                                 torch.tensor(q_vals, dtype=torch.float32, requires_grad=False),
-                                 torch.tensor(total_rewards, dtype=torch.float32, requires_grad=False))
-                                 #torch.FloatTensor(total_rewards))
+                                 torch.LongTensor(actions),
+                                 torch.FloatTensor(q_vals),
+                                 torch.FloatTensor(total_rewards))
         # ========================
         return train_batch
 

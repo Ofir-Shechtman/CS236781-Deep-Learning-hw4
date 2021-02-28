@@ -126,8 +126,8 @@ class PolicyAgent(object):
         # Perform the selected action on the environment to get a reward and a new observation.
         next_state, reward, is_done, _ = self.env.step(action)
         next_state = torch.FloatTensor(next_state, device=self.device)
-        self.curr_episode_reward += reward
         experience = Experience(self.curr_state, action, reward, is_done)
+        self.curr_episode_reward += reward
         self.curr_state = next_state
         # ========================
         if is_done:
@@ -155,7 +155,6 @@ class PolicyAgent(object):
             #  based on the policy encoded in p_net.
             # ====== YOUR CODE: ======
             agent = cls(env, p_net, device)
-            #with torch.no_grad():
             while True:
                 experience = agent.step()
                 n_steps += 1
@@ -449,9 +448,6 @@ class PolicyTrainer(object):
             else:
                 total_loss += loss
             losses_dict.update(loss_dict)
-        total_loss *= len(batch)
-        from torchviz import make_dot
-        make_dot(total_loss).render("total_loss", format="png")
         total_loss.backward()
         self.optimizer.step()
         # ========================
