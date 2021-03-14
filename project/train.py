@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from typing import Callable
 import os
-from DataLoader import BushDataLoader
+from BushDataLoader import BushDataLoader
 from torch.utils.data import DataLoader
 from torch.optim.optimizer import Optimizer
 from gan import Discriminator, SNDiscriminator, Generator
