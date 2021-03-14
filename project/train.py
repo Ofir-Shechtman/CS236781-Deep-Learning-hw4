@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 from typing import Callable
 import os
-from BushDataLoader import BushDataLoader
+from .BushDataLoader import BushDataLoader
 from torch.utils.data import DataLoader
 from torch.optim.optimizer import Optimizer
-from gan import Discriminator, SNDiscriminator, Generator
+from .gan import Discriminator, SNDiscriminator, Generator
 import torch.optim as optim
 import IPython.display
 import tqdm
@@ -156,11 +156,10 @@ def train_batch(
 
 
 class Trainer:
-    def __init__(self, hp, dsc_cls, gen_cls, wgan=False):
+    def __init__(self, hp, dsc_cls, gen_cls, name='gan', wgan=False):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         batch_size = hp['batch_size']
         z_dim = hp['z_dim']
-
         # Data
         self.dl_train = BushDataLoader(batch_size, shuffle=True)
         # im_size = self.dl_train.im_size
@@ -169,28 +168,23 @@ class Trainer:
         self.dsc = dsc_cls(self.dl_train.im_size).to(self.device)
         self.gen = gen_cls(z_dim, featuremap_size=4).to(self.device)
 
-        self.dsc_optimizer = self.create_optimizer(self.dsc.parameters(), hp['discriminator_optimizer'])
-        self.gen_optimizer = self.create_optimizer(self.gen.parameters(), hp['generator_optimizer'])
+        self.dsc_optimizer = torch.optim.RMSprop(self.dsc.parameters(), lr=0.00005)#self.create_optimizer(self.dsc.parameters(), hp['discriminator_optimizer'])
+        self.gen_optimizer = torch.optim.RMSprop(self.gen.parameters(), lr=0.00005)#self.create_optimizer(self.gen.parameters(), hp['generator_optimizer'])
 
         # Loss
         if wgan:
-            dsc_loss_fn = wgan_discriminator_loss_fn
-            gen_loss_fn = wgan_generator_loss_fn
+            self.dsc_loss_fn = wgan_discriminator_loss_fn
+            self.gen_loss_fn = wgan_generator_loss_fn
         else:
-            def dsc_loss_fn(y_data, y_generated):
-                return discriminator_loss_fn(y_data, y_generated, hp['data_label'], hp['label_noise'])
-
-            def gen_loss_fn(y_generated):
-                return generator_loss_fn(y_generated, hp['data_label'])
-
-        self.dsc_loss_fn = dsc_loss_fn
-        self.gen_loss_fn = gen_loss_fn
+            self.dsc_loss_fn = lambda y_data, y_generated: discriminator_loss_fn(y_data, y_generated,
+                                                                                  hp['data_label'], hp['label_noise'])
+            self.gen_loss_fn = lambda y_generated: generator_loss_fn(y_generated, hp['data_label'])
 
         # Training
-        checkpoint_file = 'checkpoints/gan'
-        self.checkpoint_file_final = f'{checkpoint_file}_final'
-        if os.path.isfile(f'{checkpoint_file}.pt'):
-            os.remove(f'{checkpoint_file}.pt')
+        self.checkpoint_file = 'checkpoints/{name}'
+        self.checkpoint_file_final = f'{self.checkpoint_file}_final'
+        if os.path.isfile(f'{self.checkpoint_file}.pt'):
+            os.remove(f'{self.checkpoint_file}.pt')
 
     # Optimizer
     @staticmethod
@@ -207,7 +201,7 @@ class Trainer:
             print(f'*** Loading final checkpoint file {self.checkpoint_file_final} instead of training')
             num_epochs = 0
             gen = torch.load(f'{self.checkpoint_file_final}.pt', map_location=self.device)
-            checkpoint_file = self.checkpoint_file_final
+            self.checkpoint_file = self.checkpoint_file_final
 
         try:
             dsc_avg_losses, gen_avg_losses = [], []
@@ -232,17 +226,17 @@ class Trainer:
                 gen_avg_losses.append(np.mean(gen_losses))
                 print(f'Discriminator loss: {dsc_avg_losses[-1]}')
                 print(f'Generator loss:     {gen_avg_losses[-1]}')
-
-                if self.save_checkpoint(self.gen, dsc_avg_losses, gen_avg_losses, checkpoint_file):
+                if self.save_checkpoint(self.gen, dsc_avg_losses, gen_avg_losses, self.checkpoint_file):
                     print(f'Saved checkpoint.')
 
-                samples = gen.sample(5, with_grad=False)
+                samples = self.gen.sample(5, with_grad=False)
                 fig, _ = plot.tensors_as_images(samples.cpu(), figsize=(6, 2))
                 IPython.display.display(fig)
                 plt.close(fig)
         except KeyboardInterrupt as e:
             print('\n *** Training interrupted by user')
 
+    @staticmethod
     def save_checkpoint(gen_model, dsc_losses, gen_losses, checkpoint_file):
         """
         Saves a checkpoint of the generator, if necessary.
@@ -272,15 +266,15 @@ class Trainer:
 
 class GANTrainer(Trainer):
     def __init__(self, hp):
-        super().__init__(hp, Discriminator, Generator, wgan=False)
+        super(GANTrainer, self).__init__(hp, Discriminator, Generator, name='gan', wgan=False)
 
 class SNGANTrainer(Trainer):
     def __init__(self, hp):
-        super().__init__(hp, SNDiscriminator, Generator, wgan=False)
+        super().__init__(hp, SNDiscriminator, Generator, name='sngan', wgan=False)
 
 class WGANTrainer(Trainer):
     def __init__(self, hp):
-        super().__init__(hp, SNDiscriminator, Generator, wgan=True)
+        super().__init__(hp, SNDiscriminator, Generator, name='wgan', wgan=True)
 
     def train(self, **kwargs):
-        super(WGANTrainer, self).train(n_critic=5, c=0.01)
+        super().train(n_critic=5, c=0.01)
