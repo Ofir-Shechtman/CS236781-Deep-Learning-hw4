@@ -168,8 +168,8 @@ class Trainer:
         self.dsc = dsc_cls(self.dl_train.im_size).to(self.device)
         self.gen = gen_cls(z_dim, featuremap_size=4).to(self.device)
 
-        self.dsc_optimizer = torch.optim.RMSprop(self.dsc.parameters(), lr=0.00005)#self.create_optimizer(self.dsc.parameters(), hp['discriminator_optimizer'])
-        self.gen_optimizer = torch.optim.RMSprop(self.gen.parameters(), lr=0.00005)#self.create_optimizer(self.gen.parameters(), hp['generator_optimizer'])
+        self.dsc_optimizer = self.create_optimizer(self.dsc.parameters(), hp['discriminator_optimizer'])
+        self.gen_optimizer = self.create_optimizer(self.gen.parameters(), hp['generator_optimizer'])
 
         # Loss
         if wgan:
@@ -177,14 +177,16 @@ class Trainer:
             self.gen_loss_fn = wgan_generator_loss_fn
         else:
             self.dsc_loss_fn = lambda y_data, y_generated: discriminator_loss_fn(y_data, y_generated,
-                                                                                  hp['data_label'], hp['label_noise'])
+                                                                                 hp['data_label'], hp['label_noise'])
             self.gen_loss_fn = lambda y_generated: generator_loss_fn(y_generated, hp['data_label'])
 
         # Training
-        self.checkpoint_file = 'checkpoints/{name}'
+        self.checkpoint_file = f'checkpoints/{name}'
         self.checkpoint_file_final = f'{self.checkpoint_file}_final'
         if os.path.isfile(f'{self.checkpoint_file}.pt'):
             os.remove(f'{self.checkpoint_file}.pt')
+        self.n_critic = hp['n_critic']
+        self.c = hp['c']
 
     # Optimizer
     @staticmethod
@@ -194,7 +196,7 @@ class Trainer:
         opt_params.pop('type')
         return optim.__dict__[optimizer_type](model_params, **opt_params)
 
-    def train(self, n_critic=1, c=0.0):
+    def train(self):
         num_epochs = 100
 
         if os.path.isfile(f'{self.checkpoint_file_final}.pt'):
@@ -217,7 +219,7 @@ class Trainer:
                             self.dsc, self.gen,
                             self.dsc_loss_fn, self.gen_loss_fn,
                             self.dsc_optimizer, self.gen_optimizer,
-                            x_data, n_critic, c)
+                            x_data, self.n_critic, self.c)
                         dsc_losses.append(dsc_loss)
                         gen_losses.append(gen_loss)
                         pbar.update()
@@ -268,13 +270,12 @@ class GANTrainer(Trainer):
     def __init__(self, hp):
         super(GANTrainer, self).__init__(hp, Discriminator, Generator, name='gan', wgan=False)
 
+
 class SNGANTrainer(Trainer):
     def __init__(self, hp):
         super().__init__(hp, SNDiscriminator, Generator, name='sngan', wgan=False)
 
+
 class WGANTrainer(Trainer):
     def __init__(self, hp):
         super().__init__(hp, SNDiscriminator, Generator, name='wgan', wgan=True)
-
-    def train(self, **kwargs):
-        super().train(n_critic=5, c=0.01)

@@ -9,8 +9,7 @@ def gan_hyperparams():
             type="Adam",  # Any name in nn.optim like SGD, Adam
             lr=2e-4,
             betas=(0.5, 0.999),
-            #weight_decay=2e-3
-            # You an add extra args for the optimizer here
+
         ),
         generator_optimizer=dict(
             type="Adam",  # Any name in nn.optim like SGD, Adam
@@ -18,5 +17,59 @@ def gan_hyperparams():
             betas=(0.5, 0.999)
             # You an add extra args for the optimizer here
         ),
+        n_critic=1,
+        c=0.0
     )
+    return hypers
+
+
+def vanilla_gan_hyperparams():
+    hypers = gan_hyperparams()
+    new_hypers = dict(
+
+    )
+    hypers.update(new_hypers)
+    return hypers
+
+
+def sngan_hyperparams():
+    hypers = gan_hyperparams()
+    new_hypers = dict(
+
+    )
+    hypers.update(new_hypers)
+    return hypers
+
+def wgan_hyperparams():
+    hypers = gan_hyperparams()
+    new_hypers = dict(
+        discriminator_optimizer=dict(
+            type="RMSprop",
+            lr=5e-5,
+        ),
+        generator_optimizer=dict(
+            type="RMSprop",
+            lr=5e-5,
+        ),
+        n_critic=5,
+        c=0.01
+    )
+    hypers.update(new_hypers)
+    return hypers
+
+def w_sn_gan_hyperparams():
+    hypers = gan_hyperparams()
+    new_hypers = dict(
+        discriminator_optimizer=dict(
+            type="RMSprop",
+            lr=5e-5,
+        ),
+        generator_optimizer=dict(
+            type="RMSprop",
+            lr=5e-5,
+        ),
+        n_critic=5,
+        c=0.01
+    )
+    hypers.update(new_hypers)
     return hypers
