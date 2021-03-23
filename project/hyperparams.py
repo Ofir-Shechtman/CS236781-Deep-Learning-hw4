@@ -45,11 +45,11 @@ def wgan_hyperparams():
     new_hypers = dict(
         discriminator_optimizer=dict(
             type="RMSprop",
-            lr=5e-5,
+            lr=5e-4,
         ),
         generator_optimizer=dict(
             type="RMSprop",
-            lr=5e-5,
+            lr=5e-4,
         ),
         n_critic=5,
         c=0.01
@@ -62,11 +62,11 @@ def w_sn_gan_hyperparams():
     new_hypers = dict(
         discriminator_optimizer=dict(
             type="RMSprop",
-            lr=5e-5,
+            lr=2e-4,
         ),
         generator_optimizer=dict(
             type="RMSprop",
-            lr=5e-5,
+            lr=2e-4,
         ),
         n_critic=5,
         c=0.01

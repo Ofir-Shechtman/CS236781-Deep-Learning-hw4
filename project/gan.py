@@ -28,12 +28,12 @@ class Discriminator(nn.Module):
         for channel_in, channel_out in [(in_size, 64), (64, 128), (128, 256), (256, 512)]:
             modules.append(nn.Conv2d(in_channels=channel_in, out_channels=channel_out,
                                      kernel_size=4, padding=1, stride=2, bias=False))
-            if channel_in != in_size:
-                modules.append(nn.BatchNorm2d(num_features=channel_out))
+            #if channel_in != in_size:
+            modules.append(nn.BatchNorm2d(num_features=channel_out))
             modules.append(nn.LeakyReLU(negative_slope=0.2, inplace=True))
         modules.append(nn.Conv2d(in_channels=512, out_channels=1,
                                  kernel_size=4, padding=0, stride=1, bias=False))
-        modules.append(nn.Sigmoid())
+        # modules.append(nn.Sigmoid())
 
         return nn.Sequential(*modules)
 
@@ -89,16 +89,16 @@ class Generator(nn.Module):
             # input is Z, going into a convolution
             nn.ConvTranspose2d(z_dim, h_size * 8, kernel_size=4, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(h_size * 8),
-            nn.ReLU(),
+            nn.ReLU(True),
             nn.ConvTranspose2d(h_size * 8, h_size * 4, kernel_size=4, padding=1, stride=2, bias=False),
             nn.BatchNorm2d(h_size * 4),
-            nn.ReLU(),
+            nn.ReLU(True),
             nn.ConvTranspose2d(h_size * 4, h_size * 2, kernel_size=4, padding=1, stride=2, bias=False),
             nn.BatchNorm2d(h_size * 2),
-            nn.ReLU(),
+            nn.ReLU(True),
             nn.ConvTranspose2d(h_size * 2, h_size, kernel_size=4, padding=1, stride=2, bias=False),
             nn.BatchNorm2d(h_size),
-            nn.ReLU(),
+            nn.ReLU(True),
             nn.ConvTranspose2d(h_size, out_channels, featuremap_size, 2, 1, bias=False),
             nn.Tanh()
         )
