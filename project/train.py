@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import cs236781.plot as plot
 
 
-'''def discriminator_loss_fn(y_data, y_generated, data_label=0, label_noise=0.0):
+def discriminator_loss_fn(y_data, y_generated, data_label=0, label_noise=0.0):
     """
     Computes the combined loss of the discriminator given real and generated
     data using a binary cross-entropy metric.
@@ -44,7 +44,7 @@ import cs236781.plot as plot
     labels = torch.distributions.uniform.Uniform(r1, r2).sample(y_data.shape)
     loss_generated = bce(y_generated, labels.to(device=y_generated.device))
 
-    return loss_data + loss_generated'''
+    return loss_data + loss_generated
 
 
 def wgan_discriminator_loss_fn(y_data, y_generated):
@@ -53,7 +53,7 @@ def wgan_discriminator_loss_fn(y_data, y_generated):
     return loss_data, loss_generated
 
 
-'''def generator_loss_fn(y_generated, data_label=0):
+def generator_loss_fn(y_generated, data_label=0):
     """
     Computes the loss of the generator given generated data using a
     binary cross-entropy metric.
@@ -68,19 +68,18 @@ def wgan_discriminator_loss_fn(y_data, y_generated):
     #  Implement the Generator loss.
     #  Think about what you need to compare the input to, in order to
     #  formulate the loss in terms of Binary Cross Entropy.
-    gen_model.zero_grad()
     labels = torch.full_like(y_generated, data_label, device=y_generated.device)
     bce = nn.BCELoss()
     loss = bce(y_generated, labels)
     return loss
-'''
+
 
 def wgan_generator_loss_fn(y_generated):
     loss = y_generated.mean(0).view(1)
     return loss
 
 
-'''def train_batch_discriminator(
+def train_batch_discriminator(
         dsc_model: Discriminator,
         gen_model: Generator,
         dsc_loss_fn: Callable,
@@ -101,28 +100,29 @@ def w_train_batch_discriminator(
         dsc_loss_fn: Callable,
         dsc_optimizer: Optimizer,
         x_data: DataLoader,
-        n_critic=1,
+        n_critic=5,
         c=0.01
 ):
-    n_critic = 5
-    c= 0.01
-    device = next(dsc_model.parameters()).device
-    one = torch.FloatTensor([1]).to(device)
-    neg = one * -1
-    losses = list()
-    for _ in range(n_critic):
+    batch_size = x_data.shape[0]
+    dsc_batch_losses = []
+    # Discrimnator update, n_critic iterations
+    # clip discrimnator parameters, then update
+    for d_iter in range(n_critic):
         dsc_model.zero_grad()
         for p in dsc_model.parameters():
             p.data.clamp_(-c, c)
-        gen_data = gen_model.sample(len(x_data))
-        loss_data, loss_generated = dsc_loss_fn(dsc_model(x_data), dsc_model(gen_data))
-        loss_data.backward(one)
-        loss_generated.backward(neg)
-        dsc_loss = loss_data - loss_generated
-        losses.append(dsc_loss.item())
-        dsc_optimizer.step()   
+        fake_imgs = gen_model.sample(n=batch_size, with_grad=False)
+        y_data = dsc_model(x_data)
+        y_generated = dsc_model(fake_imgs)
+        dsc_loss_real, dsc_loss_fake = dsc_loss_fn(y_data, y_generated)
+        dsc_loss_real.backward()
+        dsc_loss_fake.backward(torch.Tensor([-1]).to(dsc_model.device))
+        dsc_iter_loss = dsc_loss_real - dsc_loss_fake
+        dsc_batch_losses.append(dsc_iter_loss.item())
+        dsc_optimizer.step()
+    dsc_loss = np.mean(dsc_batch_losses)
 
-    return np.mean(losses)
+    return dsc_loss
 
 
 def train_batch_generator(
@@ -138,61 +138,11 @@ def train_batch_generator(
     gen_loss.backward()
     gen_optimizer.step()
 
-    return gen_loss'''
+    return gen_loss
 
 
 
-def _train_batch(
-            dsc_model: Discriminator,
-            gen_model: Generator,
-            dsc_loss_fn: Callable,
-            gen_loss_fn: Callable,
-            dsc_optimizer: Optimizer,
-            gen_optimizer: Optimizer,
-            x_data: DataLoader):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        for p in dsc_model.parameters():
-            p.requires_grad = True
-        batch_size = x_data.shape[0]
-        one = torch.FloatTensor([1])
-        mone = one * -1
-        
-        one = one.to(device)
-        mone = mone.to(device)
-        dsc_batch_losses = []
-        #Discrimnator update, n_critic iterations
-        #clip discrimnator parameters, then update
-        for d_iter in range(5):
-            dsc_model.zero_grad()
-            for p in dsc_model.parameters():
-                p.data.clamp_(-0.01,0.01)
-            fake_imgs = gen_model.sample(n=batch_size, with_grad=False)
-            y_data = dsc_model(x_data)
-            y_generated = dsc_model(fake_imgs)
-            dsc_loss_real, dsc_loss_fake = dsc_loss_fn(y_data, y_generated)
-            dsc_loss_real.backward()
-            dsc_loss_fake.backward()
-            dsc_iter_loss = dsc_loss_real - dsc_loss_fake
-            dsc_batch_losses.append(dsc_iter_loss.item())
-            dsc_optimizer.step()
-        dsc_loss = np.mean(dsc_batch_losses).item()
-
-        # Generator Update
-        # Disabling dsc gradients to save computation time
-        for p in dsc_model.parameters():
-            p.requires_grad = False
-        gen_model.zero_grad()
-        fake_imgs = gen_model.sample(n=batch_size, with_grad=True)
-        y_generated = dsc_model(fake_imgs)
-        gen_loss = gen_loss_fn(y_generated)
-        gen_loss.backward(one)
-        gen_optimizer.step()
-        gen_loss = gen_loss.item()
-        return dsc_loss, gen_loss
-
-
-
-'''def train_batch(
+def train_batch(
         dsc_model: Discriminator,
         gen_model: Generator,
         dsc_loss_fn: Callable,
@@ -237,7 +187,7 @@ def _train_batch(
 
     # ========================
 
-    return dsc_loss.item(), gen_loss.item()'''
+    return dsc_loss.item(), gen_loss.item()
 
 
 class Trainer:
@@ -301,7 +251,15 @@ class Trainer:
                 with tqdm.tqdm(total=len(self.dl_train.batch_sampler), file=sys.stdout) as pbar:
                     for batch_idx, (x_data, _) in enumerate(self.dl_train):
                         x_data = x_data.to(self.device)
-                        dsc_loss, gen_loss = self._train_batch(x_data)
+                        dsc_loss, gen_loss = train_batch(self.dsc,
+                                                        self.gen,
+                                                        self.dsc_loss_fn,
+                                                        self.gen_loss_fn,
+                                                        self.dsc_optimizer,
+                                                        self.gen_optimizer,
+                                                        x_data,
+                                                        self.n_critic,
+                                                        self.c)
                         dsc_losses.append(dsc_loss)
                         gen_losses.append(gen_loss)
                         pbar.update()
@@ -320,10 +278,10 @@ class Trainer:
                     print("Calculating inception score...")
                     #inc_score = 0#calc_inception_score(self.gen_model)
                     #print(f'Epoch {epoch_idx + 1}, Inception score:{inc_score}')
-                    if inc_score > max_inc_score:
-                        max_inc_score = inc_score
-                        torch.save(self.gen_model, self.checkpoint_file)
-                        print(f'Saved checkpoint.')
+                    #if inc_score > max_inc_score:
+                    #    max_inc_score = inc_score
+                    #    torch.save(self.gen_model, self.checkpoint_file)
+                    #    print(f'Saved checkpoint.')
             print(f"Finished training! best inception score is: {max_inc_score}")
             return max_inc_score
         except KeyboardInterrupt as e:
@@ -331,46 +289,7 @@ class Trainer:
         finally:
             self.dsc.eval()
             self.gen.eval()
-            
-    def _train_batch(self, x_data: DataLoader):
-        for p in self.dsc.parameters():
-            p.requires_grad = True
-        batch_size = x_data.shape[0]
-        one = torch.FloatTensor([1])
-        mone = one * -1
-        
-        one = one.to(self.device)
-        mone = mone.to(self.device)
-        dsc_batch_losses = []
-        #Discrimnator update, n_critic iterations
-        #clip discrimnator parameters, then update
-        for d_iter in range(5):
-            self.dsc.zero_grad()
-            for p in self.dsc.parameters():
-                p.data.clamp_(-0.01,0.01)
-            fake_imgs = self.gen.sample(n=batch_size, with_grad=False)
-            y_data = self.dsc(x_data)
-            y_generated = self.dsc(fake_imgs)
-            dsc_loss_real, dsc_loss_fake = self.dsc_loss_fn(y_data, y_generated)
-            dsc_loss_real.backward(one)
-            dsc_loss_fake.backward(mone)
-            dsc_iter_loss = dsc_loss_real - dsc_loss_fake
-            dsc_batch_losses.append(dsc_iter_loss.item())
-            self.dsc_optimizer.step()
-        dsc_loss = np.mean(dsc_batch_losses).item()
 
-        # Generator Update
-        # Disabling dsc gradients to save computation time
-        for p in self.dsc.parameters():
-            p.requires_grad = False
-        self.gen.zero_grad()
-        fake_imgs = self.gen.sample(n=batch_size, with_grad=True)
-        y_generated = self.dsc(fake_imgs)
-        gen_loss = self.gen_loss_fn(y_generated)
-        gen_loss.backward(one)
-        self.gen_optimizer.step()
-        gen_loss = gen_loss.item()
-        return dsc_loss, gen_loss
 
 
     @staticmethod
