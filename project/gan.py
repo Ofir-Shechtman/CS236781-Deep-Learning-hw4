@@ -33,7 +33,7 @@ class Discriminator(nn.Module):
             modules.append(nn.LeakyReLU(negative_slope=0.2, inplace=True))
         modules.append(nn.Conv2d(in_channels=512, out_channels=1,
                                  kernel_size=4, padding=0, stride=1, bias=False))
-        # modules.append(nn.Sigmoid())
+        modules.append(nn.Sigmoid())
 
         return nn.Sequential(*modules)
 
@@ -64,7 +64,7 @@ class SNDiscriminator(Discriminator):
             modules.append(nn.LeakyReLU(negative_slope=0.2, inplace=True))
         modules.append(spectral_norm(nn.Conv2d(in_channels=512, out_channels=1,
                                  kernel_size=4, padding=0, stride=1, bias=False)))
-        # modules.append(nn.Sigmoid())
+        modules.append(nn.Sigmoid())
 
         return nn.Sequential(*modules)
 

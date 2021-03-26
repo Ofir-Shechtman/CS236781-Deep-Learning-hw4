@@ -31,7 +31,7 @@ def discriminator_loss_fn(y_data, y_generated, data_label=0, label_noise=0.0):
     :return: The combined loss of both.
     """
     assert data_label == 1 or data_label == 0
-    print(y_generated)
+    
     # TODO:
     #  Implement the discriminator loss.
     #  See pytorch's BCEWithLogitsLoss for a numerically stable implementation.
@@ -39,13 +39,12 @@ def discriminator_loss_fn(y_data, y_generated, data_label=0, label_noise=0.0):
 
     r1, r2 = data_label - label_noise / 2, data_label + label_noise / 2
     labels = torch.distributions.uniform.Uniform(r1, r2).sample(y_data.shape)
+    
     loss_data = bce(y_data, labels.to(device=y_data.device))
 
     r1, r2 = 0 - label_noise / 2, 0 + label_noise / 2
     labels = torch.distributions.uniform.Uniform(r1, r2).sample(y_data.shape)
-    print(y_generated)
     loss_generated = bce(y_generated, labels.to(device=y_generated.device))
-
     return loss_data + loss_generated
 
 
@@ -88,6 +87,8 @@ def train_batch_discriminator(
         dsc_optimizer: Optimizer,
         x_data: DataLoader,
 ):
+    for p in dsc_model.parameters():
+        p.requires_grad = True
     gen_data = gen_model.sample(len(x_data))
     dsc_loss = dsc_loss_fn(dsc_model(x_data), dsc_model(gen_data))
     dsc_loss.backward()
